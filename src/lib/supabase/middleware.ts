@@ -39,6 +39,8 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  const { pathname } = request.nextUrl
+
   // Protected routes that require authentication
   const protectedPaths = [
     '/dashboard',
@@ -51,25 +53,74 @@ export async function updateSession(request: NextRequest) {
     '/financeiro',
     '/relatorios',
     '/config',
+    '/admin',
   ]
 
   const isProtectedPath = protectedPaths.some(path =>
-    request.nextUrl.pathname.startsWith(path)
+    pathname.startsWith(path)
   )
+
+  // O painel admin exige role 'admin'.
+  const isAdminPath = pathname.startsWith('/admin')
+
+  // Página onde aguardam os usuários ainda não aprovados.
+  const isPendingPath = pathname.startsWith('/auth/aguardando')
 
   // Páginas de auth de onde um usuário logado deve ser tirado (mandado ao
   // dashboard). Exceto a rota de callback e a de redefinir senha, que precisam
-  // rodar mesmo com sessão (a recuperação de senha autentica via link do email).
-  const { pathname } = request.nextUrl
+  // rodar mesmo com sessão (a recuperação de senha autentica via link do email),
+  // e exceto a tela de aguardando aprovação (que é para usuários logados).
   const isAuthPath =
     pathname.startsWith('/auth') &&
     !pathname.startsWith('/auth/callback') &&
-    !pathname.startsWith('/auth/redefinir-senha')
+    !pathname.startsWith('/auth/redefinir-senha') &&
+    !isPendingPath
 
   if (!user && isProtectedPath) {
     // No user session, redirect to auth
     const url = request.nextUrl.clone()
     url.pathname = '/auth'
+    return NextResponse.redirect(url)
+  }
+
+  // Carrega o perfil para decidir aprovação e permissão de admin.
+  // (Consulta leve por índice em user_id; checagem otimista no proxy.)
+  let perfil: { role: string; aprovado: boolean; ativo: boolean | null } | null = null
+  if (user) {
+    const { data } = await supabase
+      .from('usuarios')
+      .select('role, aprovado, ativo')
+      .eq('user_id', user.id)
+      .maybeSingle()
+    perfil = data
+  }
+
+  const isAdmin = perfil?.role === 'admin'
+  // Admin nunca precisa de aprovação. Demais usuários precisam estar
+  // aprovados e ativos.
+  const liberado = isAdmin || (!!perfil?.aprovado && perfil?.ativo !== false)
+
+  if (user && !liberado) {
+    // Usuário logado porém não aprovado: só pode ficar na tela de aguardando.
+    if (!isPendingPath) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/auth/aguardando'
+      return NextResponse.redirect(url)
+    }
+    return supabaseResponse
+  }
+
+  // Usuário já liberado não deve permanecer na tela de aguardando.
+  if (user && liberado && isPendingPath) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/dashboard'
+    return NextResponse.redirect(url)
+  }
+
+  // Apenas admins acessam o painel admin.
+  if (user && isAdminPath && !isAdmin) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/dashboard'
     return NextResponse.redirect(url)
   }
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Bell, Search, Menu, Sun, Moon, LogOut, User } from 'lucide-react'
+import { Bell, Search, Menu, Sun, Moon, LogOut, User, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -220,6 +220,12 @@ export function Header({ title, showSearch = true, notifications = 0 }: HeaderPr
                 <User className="w-4 h-4" />
                 Perfil
               </DropdownMenuItem>
+              {user?.role === 'admin' && (
+                <DropdownMenuItem render={<Link href="/admin" />}>
+                  <ShieldCheck className="w-4 h-4" />
+                  Painel Admin
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer">
                 <LogOut className="w-4 h-4 mr-2" />
                 Sair

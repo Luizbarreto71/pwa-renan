@@ -6,6 +6,7 @@ export interface User {
   avatar_url?: string
   role: 'admin' | 'user'
   ativo?: boolean
+  aprovado?: boolean
   created_at: string
   updated_at: string
 }

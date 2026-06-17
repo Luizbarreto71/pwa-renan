@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS public.usuarios (
   avatar_url TEXT,
   role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'user')),
   ativo BOOLEAN DEFAULT true,
+  -- Novos cadastros entram pendentes; o admin precisa aprovar para liberar o acesso.
+  aprovado BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -328,6 +330,47 @@ CREATE POLICY "Usuários podem atualizar seu próprio perfil"
 ON public.usuarios
 FOR UPDATE
 USING (auth.uid() = user_id);
+
+-- Função auxiliar: o usuário autenticado é admin?
+-- SECURITY DEFINER ignora RLS internamente, evitando recursão nas policies.
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.usuarios
+    WHERE user_id = auth.uid() AND role = 'admin'
+  );
+$$;
+
+-- Admin enxerga e gerencia todos os usuários (aprovação, ativação, role).
+CREATE POLICY "Admins podem ver todos os usuarios"
+ON public.usuarios FOR SELECT USING (public.is_admin());
+
+CREATE POLICY "Admins podem atualizar todos os usuarios"
+ON public.usuarios FOR UPDATE USING (public.is_admin());
+
+-- Leitura agregada das tabelas de dados para os relatórios do admin.
+CREATE POLICY "Admins podem ver todos os clientes"
+ON public.clientes FOR SELECT USING (public.is_admin());
+
+CREATE POLICY "Admins podem ver todos os produtos"
+ON public.produtos FOR SELECT USING (public.is_admin());
+
+CREATE POLICY "Admins podem ver todas as vendas"
+ON public.vendas FOR SELECT USING (public.is_admin());
+
+CREATE POLICY "Admins podem ver todos os emprestimos"
+ON public.emprestimos FOR SELECT USING (public.is_admin());
+
+CREATE POLICY "Admins podem ver todos os lancamentos"
+ON public.lancamentos_financeiros FOR SELECT USING (public.is_admin());
+
+CREATE POLICY "Admins podem ver todos os tg_clientes"
+ON public.tg_clientes FOR SELECT USING (public.is_admin());
 
 -- ============================================
 -- POLICIES - CLIENTES
@@ -740,12 +783,13 @@ CREATE TRIGGER update_lancamentos_financeiros_updated_at
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.usuarios (user_id, email, nome, role)
+  INSERT INTO public.usuarios (user_id, email, nome, role, aprovado)
   VALUES (
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'nome', split_part(NEW.email, '@', 1)),
-    'user'
+    'user',
+    false
   );
   RETURN NEW;
 END;
