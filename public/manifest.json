@@ -1,0 +1,50 @@
+{
+  "name": "PWA Gestão - Sistema de Gestão Completa",
+  "short_name": "PWA Gestão",
+  "description": "Sistema completo de gestão empresarial com controle de TG, estoque, financeiro, vendas e muito mais.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#7c3aed",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "finance", "productivity"],
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "scope": "/",
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Início",
+      "description": "Ver dashboard geral",
+      "url": "/dashboard"
+    },
+    {
+      "name": "Nova Venda",
+      "short_name": "Venda",
+      "description": "Registrar nova venda",
+      "url": "/vendas"
+    },
+    {
+      "name": "Clientes",
+      "short_name": "Clientes",
+      "description": "Gerenciar clientes",
+      "url": "/clientes"
+    },
+    {
+      "name": "Estoque",
+      "short_name": "Estoque",
+      "description": "Gerenciar estoque",
+      "url": "/estoque"
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}

@@ -1,0 +1,503 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { PageLayout } from '@/components/layout/PageLayout'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { toast } from 'sonner'
+import { Plus, ShoppingCart, Trash2, User, CreditCard } from 'lucide-react'
+import { formatCurrency, formatDate } from '@/lib/utils'
+import {
+  vendasService,
+  clientesService,
+  produtosService,
+  getUsuarioId,
+} from '@/lib/services'
+
+interface VendaListItem {
+  id: string
+  cliente_id: string
+  valor_total: number
+  forma_pagamento: 'pix' | 'dinheiro' | 'cartao' | 'transferencia'
+  status: 'concluida' | 'pendente' | 'cancelada'
+  observacoes?: string
+  created_at: string
+  clientes?: { nome: string } | null
+}
+
+interface ClienteOption {
+  id: string
+  nome: string
+}
+
+interface ProdutoOption {
+  id: string
+  nome: string
+  valor_venda: number
+}
+
+interface ItemForm {
+  produto_id: string
+  quantidade: number
+  valor_unitario: number
+}
+
+const FORMAS_PAGAMENTO: Array<{ value: VendaListItem['forma_pagamento']; label: string }> = [
+  { value: 'pix', label: 'PIX' },
+  { value: 'dinheiro', label: 'Dinheiro' },
+  { value: 'cartao', label: 'Cartão' },
+  { value: 'transferencia', label: 'Transferência' },
+]
+
+const FORMA_LABEL: Record<VendaListItem['forma_pagamento'], string> = {
+  pix: 'PIX',
+  dinheiro: 'Dinheiro',
+  cartao: 'Cartão',
+  transferencia: 'Transferência',
+}
+
+const STATUS_VARIANT: Record<
+  VendaListItem['status'],
+  'default' | 'secondary' | 'destructive' | 'outline'
+> = {
+  concluida: 'default',
+  pendente: 'secondary',
+  cancelada: 'destructive',
+}
+
+const emptyItem = (): ItemForm => ({ produto_id: '', quantidade: 1, valor_unitario: 0 })
+
+export default function VendasPage() {
+  const [vendas, setVendas] = useState<VendaListItem[]>([])
+  const [clientes, setClientes] = useState<ClienteOption[]>([])
+  const [produtos, setProdutos] = useState<ProdutoOption[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+
+  const [formData, setFormData] = useState<{
+    cliente_id: string
+    forma_pagamento: VendaListItem['forma_pagamento']
+    observacoes: string
+    itens: ItemForm[]
+  }>({
+    cliente_id: '',
+    forma_pagamento: 'pix',
+    observacoes: '',
+    itens: [emptyItem()],
+  })
+
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  const fetchData = async () => {
+    try {
+      const usuarioId = await getUsuarioId()
+      if (!usuarioId) {
+        setLoading(false)
+        return
+      }
+
+      const [vendasRes, clientesRes, produtosRes] = await Promise.all([
+        vendasService.getAll(usuarioId),
+        clientesService.getAll(usuarioId),
+        produtosService.getAll(usuarioId),
+      ])
+
+      if (vendasRes.error) throw vendasRes.error
+      if (clientesRes.error) throw clientesRes.error
+      if (produtosRes.error) throw produtosRes.error
+
+      setVendas((vendasRes.data as VendaListItem[]) || [])
+      setClientes((clientesRes.data as ClienteOption[]) || [])
+      setProdutos((produtosRes.data as ProdutoOption[]) || [])
+    } catch {
+      toast.error('Erro ao carregar vendas')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const resetForm = () => {
+    setFormData({
+      cliente_id: '',
+      forma_pagamento: 'pix',
+      observacoes: '',
+      itens: [emptyItem()],
+    })
+  }
+
+  const addItem = () => {
+    setFormData((prev) => ({ ...prev, itens: [...prev.itens, emptyItem()] }))
+  }
+
+  const removeItem = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      itens: prev.itens.filter((_, i) => i !== index),
+    }))
+  }
+
+  const updateItem = (index: number, patch: Partial<ItemForm>) => {
+    setFormData((prev) => ({
+      ...prev,
+      itens: prev.itens.map((item, i) => (i === index ? { ...item, ...patch } : item)),
+    }))
+  }
+
+  const handleProdutoChange = (index: number, produtoId: string) => {
+    const produto = produtos.find((p) => p.id === produtoId)
+    updateItem(index, {
+      produto_id: produtoId,
+      // Pré-preenche o valor unitário com o valor de venda do produto.
+      valor_unitario: produto ? Number(produto.valor_venda) : 0,
+    })
+  }
+
+  const total = formData.itens.reduce(
+    (sum, item) => sum + item.quantidade * item.valor_unitario,
+    0
+  )
+
+  const handleSave = async () => {
+    if (!formData.cliente_id) {
+      toast.error('Selecione um cliente')
+      return
+    }
+
+    const itensValidos = formData.itens.filter(
+      (item) => item.produto_id && item.quantidade > 0
+    )
+
+    if (itensValidos.length === 0) {
+      toast.error('Adicione pelo menos um item válido')
+      return
+    }
+
+    setSaving(true)
+    try {
+      const usuarioId = await getUsuarioId()
+      if (!usuarioId) {
+        setSaving(false)
+        return
+      }
+
+      const vendaData = {
+        cliente_id: formData.cliente_id,
+        forma_pagamento: formData.forma_pagamento,
+        observacoes: formData.observacoes || undefined,
+        itens: itensValidos.map((item) => ({
+          produto_id: item.produto_id,
+          quantidade: Number(item.quantidade),
+          valor_unitario: Number(item.valor_unitario),
+        })),
+      }
+
+      // vendasService.create LANÇA erro em falha (não retorna { error }).
+      await vendasService.create(vendaData, usuarioId)
+
+      toast.success('Venda registrada com sucesso!')
+      setIsDialogOpen(false)
+      resetForm()
+      fetchData()
+    } catch {
+      toast.error('Erro ao registrar venda')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const totalFaturado = vendas.reduce((sum, v) => sum + Number(v.valor_total), 0)
+
+  return (
+    <PageLayout title="Vendas" showSearch={false}>
+      <div className="space-y-4">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-muted-foreground">Registro de vendas</p>
+          </div>
+
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger
+              render={<Button />}
+              onClick={() => {
+                resetForm()
+              }}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Nova Venda
+            </DialogTrigger>
+
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Nova Venda</DialogTitle>
+                <DialogDescription>
+                  Selecione o cliente, os produtos e a forma de pagamento.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+                <div className="space-y-2">
+                  <Label htmlFor="cliente">Cliente *</Label>
+                  <select
+                    id="cliente"
+                    value={formData.cliente_id}
+                    onChange={(e) =>
+                      setFormData({ ...formData, cliente_id: e.target.value })
+                    }
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">Selecione um cliente</option>
+                    {clientes.map((cliente) => (
+                      <option key={cliente.id} value={cliente.id}>
+                        {cliente.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="forma_pagamento">Forma de Pagamento *</Label>
+                  <select
+                    id="forma_pagamento"
+                    value={formData.forma_pagamento}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        forma_pagamento: e.target
+                          .value as VendaListItem['forma_pagamento'],
+                      })
+                    }
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    {FORMAS_PAGAMENTO.map((fp) => (
+                      <option key={fp.value} value={fp.value}>
+                        {fp.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Itens *</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addItem}
+                    >
+                      <Plus className="w-3 h-3 mr-1" />
+                      Adicionar item
+                    </Button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {formData.itens.map((item, index) => {
+                      const subtotal = item.quantidade * item.valor_unitario
+                      return (
+                        <div
+                          key={index}
+                          className="rounded-md border border-input p-3 space-y-2"
+                        >
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={item.produto_id}
+                              onChange={(e) =>
+                                handleProdutoChange(index, e.target.value)
+                              }
+                              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            >
+                              <option value="">Selecione um produto</option>
+                              {produtos.map((produto) => (
+                                <option key={produto.id} value={produto.id}>
+                                  {produto.nome}
+                                </option>
+                              ))}
+                            </select>
+                            {formData.itens.length > 1 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeItem(index)}
+                                className="text-destructive shrink-0"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Quantidade</Label>
+                              <Input
+                                type="number"
+                                min={1}
+                                value={item.quantidade}
+                                onChange={(e) =>
+                                  updateItem(index, {
+                                    quantidade: Number(e.target.value),
+                                  })
+                                }
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Valor unitário</Label>
+                              <Input
+                                type="number"
+                                min={0}
+                                step="0.01"
+                                value={item.valor_unitario}
+                                onChange={(e) =>
+                                  updateItem(index, {
+                                    valor_unitario: Number(e.target.value),
+                                  })
+                                }
+                              />
+                            </div>
+                          </div>
+
+                          <p className="text-xs text-muted-foreground text-right">
+                            Subtotal: {formatCurrency(subtotal)}
+                          </p>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="observacoes">Observações</Label>
+                  <textarea
+                    id="observacoes"
+                    value={formData.observacoes}
+                    onChange={(e) =>
+                      setFormData({ ...formData, observacoes: e.target.value })
+                    }
+                    placeholder="Informações adicionais..."
+                    className="w-full min-h-[60px] rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2">
+                  <span className="text-sm font-medium">Total</span>
+                  <span className="text-lg font-bold">{formatCurrency(total)}</span>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                  disabled={saving}
+                >
+                  Cancelar
+                </Button>
+                <Button onClick={handleSave} disabled={saving}>
+                  {saving ? 'Salvando...' : 'Registrar Venda'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Card>
+            <CardContent className="p-3">
+              <p className="text-2xl font-bold">{vendas.length}</p>
+              <p className="text-xs text-muted-foreground">Total de Vendas</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-3">
+              <p className="text-2xl font-bold">{formatCurrency(totalFaturado)}</p>
+              <p className="text-xs text-muted-foreground">Faturamento</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* List */}
+        {loading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <Card key={i}>
+                <CardContent className="p-4 animate-pulse">
+                  <div className="h-16 bg-muted rounded-lg" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : vendas.length === 0 ? (
+          <Card>
+            <CardContent className="p-8 text-center">
+              <ShoppingCart className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">Nenhuma venda registrada</p>
+              <Button
+                variant="link"
+                onClick={() => {
+                  resetForm()
+                  setIsDialogOpen(true)
+                }}
+                className="mt-2"
+              >
+                Registrar primeira venda
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {vendas.map((venda) => (
+              <Card key={venda.id} className="card-hover">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <ShoppingCart className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium flex items-center gap-1">
+                          <User className="w-3 h-3 text-muted-foreground" />
+                          {venda.clientes?.nome || 'Cliente removido'}
+                        </p>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
+                          <span className="flex items-center gap-1">
+                            <CreditCard className="w-3 h-3" />
+                            {FORMA_LABEL[venda.forma_pagamento]}
+                          </span>
+                          <span>{formatDate(venda.created_at)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-1">
+                      <p className="font-bold">{formatCurrency(venda.valor_total)}</p>
+                      <Badge variant={STATUS_VARIANT[venda.status]}>
+                        {venda.status}
+                      </Badge>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    </PageLayout>
+  )
+}
