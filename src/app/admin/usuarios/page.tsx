@@ -12,13 +12,10 @@ import type { User } from '@/types'
 import { toast } from 'sonner'
 import { Check, X, Power, ShieldCheck, ShieldOff, Search, Clock } from 'lucide-react'
 
-type Filtro = 'pendentes' | 'todos'
-
 export default function AdminUsuariosPage() {
   const [usuarios, setUsuarios] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
-  const [filtro, setFiltro] = useState<Filtro>('pendentes')
   const [termo, setTermo] = useState('')
   const [meuId, setMeuId] = useState<string | null>(null)
   const supabase = createClient()
@@ -68,24 +65,13 @@ export default function AdminUsuariosPage() {
     }
   }
 
-  const filtrados = usuarios
-    .filter((u) => (filtro === 'pendentes' ? !u.aprovado : true))
-    .filter((u) => {
-      if (!termo.trim()) return true
-      const t = termo.toLowerCase()
-      return u.nome?.toLowerCase().includes(t) || u.email?.toLowerCase().includes(t)
-    })
-
-  const pendentesCount = usuarios.filter((u) => !u.aprovado).length
+  const filtrados = usuarios.filter((u) => {
+    if (!termo.trim()) return true
+    const t = termo.toLowerCase()
+    return u.nome?.toLowerCase().includes(t) || u.email?.toLowerCase().includes(t)
+  })
 
   const statusBadge = (u: User) => {
-    if (!u.aprovado) {
-      return (
-        <Badge variant="outline" className="border-amber-500/50 text-amber-600 dark:text-amber-400">
-          <Clock className="w-3 h-3 mr-1" /> Pendente
-        </Badge>
-      )
-    }
     if (u.ativo === false) {
       return <Badge variant="secondary">Inativo</Badge>
     }
@@ -106,31 +92,7 @@ export default function AdminUsuariosPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-        <div className="inline-flex rounded-lg border border-border p-0.5 bg-muted/40 w-fit">
-          <button
-            onClick={() => setFiltro('pendentes')}
-            className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-              filtro === 'pendentes' ? 'bg-background shadow-sm font-medium' : 'text-muted-foreground'
-            }`}
-          >
-            Pendentes
-            {pendentesCount > 0 && (
-              <span className="ml-1.5 text-xs rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 px-1.5">
-                {pendentesCount}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => setFiltro('todos')}
-            className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-              filtro === 'todos' ? 'bg-background shadow-sm font-medium' : 'text-muted-foreground'
-            }`}
-          >
-            Todos
-          </button>
-        </div>
-
+      <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-end">
         <div className="relative sm:w-64">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -145,7 +107,7 @@ export default function AdminUsuariosPage() {
       {filtrados.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center text-muted-foreground text-sm">
-            {filtro === 'pendentes' ? 'Nenhum usuário aguardando aprovação.' : 'Nenhum usuário encontrado.'}
+            Nenhum usuário encontrado.
           </CardContent>
         </Card>
       ) : (
@@ -173,33 +135,7 @@ export default function AdminUsuariosPage() {
                     </div>
 
                     <div className="flex flex-wrap gap-2 shrink-0">
-                      {!u.aprovado ? (
-                        <Button
-                          size="sm"
-                          className="gradient-primary"
-                          disabled={isBusy}
-                          onClick={() =>
-                            aplicar(u.id, () => adminService.setAprovado(u.id, true), 'Usuário aprovado')
-                          }
-                        >
-                          <Check className="w-4 h-4 mr-1" /> Aprovar
-                        </Button>
-                      ) : (
-                        !isSelf && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={isBusy}
-                            onClick={() =>
-                              aplicar(u.id, () => adminService.setAprovado(u.id, false), 'Acesso revogado')
-                            }
-                          >
-                            <X className="w-4 h-4 mr-1" /> Revogar
-                          </Button>
-                        )
-                      )}
-
-                      {u.aprovado && !isSelf && (
+                      {!isSelf && (
                         <Button
                           size="sm"
                           variant="outline"

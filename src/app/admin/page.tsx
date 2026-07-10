@@ -8,7 +8,6 @@ import { formatCurrency } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
   Users,
-  Clock,
   UserCheck,
   ShieldCheck,
   ShoppingCart,
@@ -46,7 +45,6 @@ export default function AdminOverviewPage() {
 
   const cards = [
     { label: 'Usuários', value: resumo.totalUsuarios, icon: Users, color: 'text-foreground' },
-    { label: 'Pendentes', value: resumo.pendentes, icon: Clock, color: 'text-amber-500' },
     { label: 'Ativos', value: resumo.ativos, icon: UserCheck, color: 'text-emerald-500' },
     { label: 'Admins', value: resumo.admins, icon: ShieldCheck, color: 'text-primary' },
   ]
@@ -60,25 +58,6 @@ export default function AdminOverviewPage() {
 
   return (
     <div className="space-y-6">
-      {resumo.pendentes > 0 && (
-        <Link href="/admin/usuarios">
-          <Card className="border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 transition-colors">
-            <CardContent className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Clock className="w-5 h-5 text-amber-500" />
-                <div>
-                  <p className="font-medium">
-                    {resumo.pendentes} {resumo.pendentes === 1 ? 'usuário aguardando' : 'usuários aguardando'} aprovação
-                  </p>
-                  <p className="text-xs text-muted-foreground">Toque para revisar os cadastros</p>
-                </div>
-              </div>
-              <ArrowRight className="w-4 h-4 text-muted-foreground" />
-            </CardContent>
-          </Card>
-        </Link>
-      )}
-
       <div>
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
           Usuários
@@ -127,7 +106,7 @@ export default function AdminOverviewPage() {
                 <Users className="w-5 h-5 text-primary" />
                 <div>
                   <p className="font-medium">Gerenciar usuários</p>
-                  <p className="text-xs text-muted-foreground">Aprovar, ativar e definir admins</p>
+                  <p className="text-xs text-muted-foreground">Ativar usuários e definir admins</p>
                 </div>
               </div>
               <ArrowRight className="w-4 h-4 text-muted-foreground" />

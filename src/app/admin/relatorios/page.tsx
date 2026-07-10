@@ -73,9 +73,8 @@ export default function AdminRelatoriosPage() {
   return (
     <div className="space-y-6">
       <Secao titulo="Cadastros de usuários">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Stat label="Total" value={resumo.totalUsuarios} />
-          <Stat label="Pendentes" value={resumo.pendentes} accent="text-amber-500" />
           <Stat label="Ativos" value={resumo.ativos} accent="text-emerald-500" />
           <Stat label="Inativos" value={resumo.inativos} />
           <Stat label="Admins" value={resumo.admins} accent="text-primary" />
@@ -127,14 +126,6 @@ export default function AdminRelatoriosPage() {
                           </div>
                           {a.usuario.role === 'admin' && (
                             <Badge className="bg-primary/15 text-primary border-0 shrink-0">Admin</Badge>
-                          )}
-                          {!a.usuario.aprovado && (
-                            <Badge
-                              variant="outline"
-                              className="border-amber-500/50 text-amber-600 dark:text-amber-400 shrink-0"
-                            >
-                              Pendente
-                            </Badge>
                           )}
                         </div>
                       </TableCell>

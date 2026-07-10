@@ -7,7 +7,17 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Roda em tudo, exceto internos do Next, assets e arquivos da PWA
-    '/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    '/dashboard/:path*',
+    '/tg/:path*',
+    '/estoque/:path*',
+    '/clientes/:path*',
+    '/vendas/:path*',
+    '/emprestimos/:path*',
+    '/financeiro/:path*',
+    '/relatorios/:path*',
+    '/config/:path*',
+    '/admin/:path*',
+    '/auth/:path*',
+    '/auth',
   ],
 }

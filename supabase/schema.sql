@@ -16,8 +16,8 @@ CREATE TABLE IF NOT EXISTS public.usuarios (
   avatar_url TEXT,
   role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'user')),
   ativo BOOLEAN DEFAULT true,
-  -- Novos cadastros entram pendentes; o admin precisa aprovar para liberar o acesso.
-  aprovado BOOLEAN NOT NULL DEFAULT false,
+  -- Usuários entram imediatamente ativos; a aprovação do admin foi removida.
+  aprovado BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -789,7 +789,7 @@ BEGIN
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'nome', split_part(NEW.email, '@', 1)),
     'user',
-    false
+    true
   );
   RETURN NEW;
 END;

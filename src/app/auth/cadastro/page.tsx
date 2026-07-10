@@ -37,7 +37,7 @@ export default function CadastroPage() {
 
       if (error) throw error
 
-      toast.success('Conta criada! Aguarde a aprovação do administrador para acessar.')
+      toast.success('Conta criada com sucesso! Faça login para entrar.')
       router.push('/auth/login')
     } catch (error: any) {
       toast.error(error.message || 'Erro ao criar conta')
