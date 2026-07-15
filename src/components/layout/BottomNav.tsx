@@ -10,13 +10,11 @@ import {
   DollarSign,
   FileText,
   Settings,
-  Pill,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Início' },
-  { href: '/tg', icon: Pill, label: 'TG' },
   { href: '/estoque', icon: Package, label: 'Estoque' },
   { href: '/clientes', icon: Users, label: 'Clientes' },
   { href: '/vendas', icon: ShoppingCart, label: 'Vendas' },
@@ -69,10 +67,10 @@ export function DesktopNav() {
     <nav className="hidden md:flex fixed left-0 top-0 bottom-0 w-64 bg-card border-r border-border z-50 flex-col safe-area-top">
       <div className="p-6 border-b border-border">
         <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-pink-500 bg-clip-text text-transparent">
-          PWA Gestão
+          Brunely Kids
         </h1>
         <p className="text-xs text-muted-foreground mt-1">
-          Sistema de Gestão
+          Gestão de estoque e vendas
         </p>
       </div>
 

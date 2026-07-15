@@ -79,6 +79,83 @@ const STATUS_VARIANT: Record<
 
 const emptyItem = (): ItemForm => ({ produto_id: '', quantidade: 1, valor_unitario: 0 })
 
+const printNonFiscalCoupon = (params: {
+  clienteNome: string
+  formaPagamento: VendaListItem['forma_pagamento']
+  itens: ItemForm[]
+  produtos: ProdutoOption[]
+  total: number
+}) => {
+  const now = new Date()
+  const dataHora = now.toLocaleString('pt-BR')
+  const linhas = params.itens
+    .map((item) => {
+      const produto = params.produtos.find((p) => p.id === item.produto_id)
+      const subtotal = item.quantidade * item.valor_unitario
+      return `
+        <tr>
+          <td>${produto?.nome || 'Produto'}</td>
+          <td>${item.quantidade}</td>
+          <td>${formatCurrency(item.valor_unitario)}</td>
+          <td>${formatCurrency(subtotal)}</td>
+        </tr>`
+    })
+    .join('')
+
+  const printWindow = window.open('', '_blank', 'width=420,height=680')
+
+  if (!printWindow) {
+    toast.error('Não foi possível abrir a janela de impressão.')
+    return
+  }
+
+  printWindow.document.write(`<!DOCTYPE html>
+    <html>
+      <head>
+        <title>Cupom não fiscal - Brunely Kids</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; color: #111; }
+          .center { text-align: center; }
+          h1 { margin-bottom: 4px; }
+          p { margin: 4px 0; }
+          table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+          th, td { border-bottom: 1px solid #ddd; padding: 6px 0; text-align: left; font-size: 12px; }
+          .total { font-size: 16px; font-weight: bold; margin-top: 12px; }
+          .footer { margin-top: 18px; font-size: 12px; }
+          @media print { body { margin: 0; } }
+        </style>
+      </head>
+      <body>
+        <div class="center">
+          <h1>Brunely Kids</h1>
+          <p>Cupom não fiscal - garantia de roupa</p>
+        </div>
+        <p><strong>Cliente:</strong> ${params.clienteNome}</p>
+        <p><strong>Pagamento:</strong> ${FORMA_LABEL[params.formaPagamento]}</p>
+        <p><strong>Data/Horário:</strong> ${dataHora}</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Produto</th>
+              <th>Qtd</th>
+              <th>Valor</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>${linhas}</tbody>
+        </table>
+        <div class="total">Total: ${formatCurrency(params.total)}</div>
+        <div class="footer">
+          <p>Garantia da peça: conserve este cupom como comprovante de compra.</p>
+          <p>Obrigado por comprar com a Brunely Kids.</p>
+        </div>
+      </body>
+    </html>`)
+  printWindow.document.close()
+  printWindow.focus()
+  printWindow.print()
+}
+
 export default function VendasPage() {
   const [vendas, setVendas] = useState<VendaListItem[]>([])
   const [clientes, setClientes] = useState<ClienteOption[]>([])
@@ -206,10 +283,22 @@ export default function VendasPage() {
         })),
       }
 
-      // vendasService.create LANÇA erro em falha (não retorna { error }).
-      await vendasService.create(vendaData, usuarioId)
+      const vendaCriada = await vendasService.create(vendaData, usuarioId)
+      const clienteNome = clientes.find((cliente) => cliente.id === formData.cliente_id)?.nome || 'Cliente'
 
       toast.success('Venda registrada com sucesso!')
+
+      const shouldPrint = window.confirm('Deseja imprimir o cupom não fiscal de garantia?')
+      if (shouldPrint) {
+        printNonFiscalCoupon({
+          clienteNome,
+          formaPagamento: formData.forma_pagamento,
+          itens: formData.itens,
+          produtos,
+          total,
+        })
+      }
+
       setIsDialogOpen(false)
       resetForm()
       fetchData()

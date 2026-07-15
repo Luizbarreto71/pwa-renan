@@ -3,13 +3,13 @@ import "./globals.css";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 
 export const metadata: Metadata = {
-  title: "PWA Gestão - Sistema de Gestão Completa",
-  description: "Sistema completo de gestão empresarial com controle de TG, estoque, financeiro, vendas e muito mais.",
+  title: "Brunely Kids",
+  description: "Sistema de gestão de estoque e vendas para a Brunely Kids.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "PWA Gestão",
+    title: "Brunely Kids",
   },
   icons: {
     icon: "/icons/icon.svg",

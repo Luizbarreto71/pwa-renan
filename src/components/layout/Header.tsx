@@ -82,14 +82,13 @@ export function Header({ title, showSearch = true, notifications = 0 }: HeaderPr
             <SheetHeader className="p-4 border-b">
               <SheetTitle className="text-left">
                 <span className="bg-gradient-to-r from-primary to-pink-500 bg-clip-text text-transparent">
-                  PWA Gestão
+                  Brunely Kids
                 </span>
               </SheetTitle>
             </SheetHeader>
             <nav className="p-4 space-y-1">
               {[
                 { href: '/dashboard', label: 'Dashboard' },
-                { href: '/tg', label: 'TG' },
                 { href: '/estoque', label: 'Estoque' },
                 { href: '/clientes', label: 'Clientes' },
                 { href: '/vendas', label: 'Vendas' },
@@ -116,7 +115,7 @@ export function Header({ title, showSearch = true, notifications = 0 }: HeaderPr
             "text-lg font-semibold hidden md:block",
             title && "text-base"
           )}>
-            {title || 'PWA Gestão'}
+            {title || 'Brunely Kids'}
           </h1>
         </div>
 
