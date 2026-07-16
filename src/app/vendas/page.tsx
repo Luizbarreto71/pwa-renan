@@ -87,9 +87,14 @@ const printNonFiscalCoupon = (params: {
   itens: ItemForm[]
   produtos: ProdutoOption[]
   total: number
+  observacoes?: string
+  vendaId?: string
 }) => {
   const now = new Date()
-  const dataHora = now.toLocaleString('pt-BR')
+  const data = now.toLocaleDateString('pt-BR')
+  const hora = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  const numeroCupom = `CUPOM-${now.getTime().toString(36).toUpperCase()}`
+  
   const linhas = params.itens
     .map((item) => {
       const produto = params.produtos.find((p) => p.id === item.produto_id)
@@ -97,65 +102,159 @@ const printNonFiscalCoupon = (params: {
       return `
         <tr>
           <td>${produto?.nome || 'Produto'}</td>
-          <td>${item.quantidade}</td>
-          <td>${formatCurrency(item.valor_unitario)}</td>
-          <td>${formatCurrency(subtotal)}</td>
+          <td class="center">${item.quantidade}</td>
+          <td class="right">${formatCurrency(item.valor_unitario)}</td>
+          <td class="right">${formatCurrency(subtotal)}</td>
         </tr>`
     })
     .join('')
 
-  const printWindow = window.open('', '_blank', 'width=420,height=680')
+  const formaPagamentoLabel: Record<string, string> = {
+    pix: 'PIX',
+    dinheiro: 'Dinheiro',
+    cartao: 'Cartão',
+    transferencia: 'Transferência',
+  }
+
+  // Calcular troco se for dinheiro
+  const troco = params.formaPagamento === 'dinheiro' ? params.total : 0
+
+  const printWindow = window.open('', '_blank', 'width=380,height=700')
 
   if (!printWindow) {
-    toast.error('Não foi possível abrir a janela de impressão.')
+    toast.error('Não foi possível abrir a impressão.')
     return
   }
 
   printWindow.document.write(`<!DOCTYPE html>
     <html>
       <head>
-        <title>Cupom não fiscal - Brunely Kids</title>
+        <title>Cupom - Brunely Kids</title>
         <style>
-          body { font-family: Arial, sans-serif; padding: 20px; color: #111; }
-          .center { text-align: center; }
-          h1 { margin-bottom: 4px; }
-          p { margin: 4px 0; }
-          table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-          th, td { border-bottom: 1px solid #ddd; padding: 6px 0; text-align: left; font-size: 12px; }
-          .total { font-size: 16px; font-weight: bold; margin-top: 12px; }
-          .footer { margin-top: 18px; font-size: 12px; }
-          @media print { body { margin: 0; } }
+          @page { size: 80mm 297mm; margin: 0; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            width: 80mm;
+            padding: 4mm;
+            color: #000;
+            background: #fff;
+          }
+          .header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 4mm; margin-bottom: 4mm; }
+          .header h1 { font-size: 18px; font-weight: bold; letter-spacing: 1px; }
+          .header .slogan { font-size: 10px; margin-top: 2px; }
+          .info { margin-bottom: 4mm; font-size: 11px; }
+          .info p { margin: 2px 0; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 4mm; }
+          th { border-bottom: 1px solid #000; border-top: 1px solid #000; padding: 3px 0; font-size: 10px; text-align: left; }
+          th.right { text-align: right; }
+          th.center { text-align: center; }
+          td { padding: 3px 0; font-size: 11px; }
+          td.right { text-align: right; }
+          td.center { text-align: center; }
+          .total { border-top: 1px dashed #000; padding-top: 4mm; margin-top: 4mm; text-align: center; }
+          .total .label { font-size: 10px; }
+          .total .value { font-size: 22px; font-weight: bold; margin-top: 2px; }
+          .payment-info { text-align: center; margin: 4mm 0; padding: 3mm; border: 1px dashed #000; }
+          .payment-info p { font-size: 11px; margin: 2px 0; }
+          .divider { border-bottom: 1px dashed #000; margin: 4mm 0; }
+          .footer { text-align: center; font-size: 10px; }
+          .footer p { margin: 2px 0; }
+          .codigo { text-align: center; font-size: 9px; margin: 3mm 0; letter-spacing: 1px; }
+          @media print {
+            body { margin: 0; padding: 2mm; }
+            .no-print { display: none; }
+          }
         </style>
       </head>
       <body>
-        <div class="center">
-          <h1>Brunely Kids</h1>
-          <p>Cupom não fiscal - garantia de roupa</p>
+        <div class="header">
+          <h1>BRUNELY KIDS</h1>
+          <p class="slogan">Roupas Infantis com Amor e Estilo</p>
+          <p style="font-size:10px;margin-top:2px;">CNPJ: 00.000.000/0001-00</p>
         </div>
-        <p><strong>Cliente:</strong> ${params.clienteNome}</p>
-        <p><strong>Pagamento:</strong> ${FORMA_LABEL[params.formaPagamento]}</p>
-        <p><strong>Data/Horário:</strong> ${dataHora}</p>
+
+        <div class="info">
+          <p><strong>CUPOM NÃO FISCAL</strong></p>
+          <p>Data: ${data} ${hora}</p>
+          <p>Nº: ${numeroCupom}</p>
+          <p>Cliente: ${params.clienteNome}</p>
+        </div>
+
+        <div class="divider"></div>
+
         <table>
           <thead>
             <tr>
-              <th>Produto</th>
-              <th>Qtd</th>
-              <th>Valor</th>
-              <th>Total</th>
+              <th>PRODUTO</th>
+              <th class="center">QTD</th>
+              <th class="right">VALOR</th>
+              <th class="right">TOTAL</th>
             </tr>
           </thead>
           <tbody>${linhas}</tbody>
         </table>
-        <div class="total">Total: ${formatCurrency(params.total)}</div>
-        <div class="footer">
-          <p>Garantia da peça: conserve este cupom como comprovante de compra.</p>
-          <p>Obrigado por comprar com a Brunely Kids.</p>
+
+        <div class="total">
+          <p class="label">TOTAL A PAGAR</p>
+          <p class="value">${formatCurrency(params.total)}</p>
         </div>
+
+        <div class="payment-info">
+          <p><strong>FORMA DE PAGAMENTO</strong></p>
+          <p>${formaPagamentoLabel[params.formaPagamento] || params.formaPagamento}</p>
+          ${params.formaPagamento === 'dinheiro' ? `
+            <p style="margin-top:3mm;">Valor Recebido: ${formatCurrency(troco)}</p>
+            <p>Troco: ${formatCurrency(0)}</p>
+          ` : ''}
+        </div>
+
+        ${params.observacoes ? `
+          <div class="divider"></div>
+          <div class="info">
+            <p><strong>Observações:</strong></p>
+            <p>${params.observacoes}</p>
+          </div>
+        ` : ''}
+
+        <div class="divider"></div>
+
+        <div class="footer">
+          <p>📍 Rua Exemplo, 123 - Centro</p>
+          <p>📱 (83) 9XXXX-XXXX</p>
+          <p>📧 contato@brunelykids.com.br</p>
+          <p style="margin-top:3mm;">🔹 Garantia da peça: 30 dias 🔹</p>
+          <p>Conserve este cupom</p>
+          <p style="margin-top:2mm;">💖 Obrigado pela preferência!</p>
+        </div>
+
+        <div class="codigo">
+          <p>${numeroCupom}</p>
+          <p>${data} ${hora}</p>
+        </div>
+
+        <div class="no-print" style="text-align:center;margin-top:5mm;">
+          <button onclick="window.print()" style="padding:10px 30px;font-size:14px;cursor:pointer;background:#e84393;color:#fff;border:none;border-radius:8px;">
+            🖨️ IMPRIMIR CUPOM
+          </button>
+          <br>
+          <button onclick="window.close()" style="margin-top:5px;padding:8px 20px;font-size:12px;cursor:pointer;background:#f1f3f5;color:#333;border:1px solid #ccc;border-radius:8px;">
+            Fechar
+          </button>
+        </div>
+
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+            }, 500);
+          };
+        </script>
       </body>
     </html>`)
   printWindow.document.close()
   printWindow.focus()
-  printWindow.print()
 }
 
 export default function VendasPage() {
@@ -342,16 +441,14 @@ export default function VendasPage() {
 
       toast.success('Venda registrada com sucesso!')
 
-      const shouldPrint = window.confirm('Deseja imprimir o cupom não fiscal de garantia?')
-      if (shouldPrint) {
         printNonFiscalCoupon({
           clienteNome,
           formaPagamento: formData.forma_pagamento,
           itens: formData.itens,
           produtos,
           total,
+          observacoes: formData.observacoes || undefined,
         })
-      }
 
       setIsDialogOpen(false)
       resetForm()
