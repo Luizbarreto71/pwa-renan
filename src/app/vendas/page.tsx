@@ -45,11 +45,13 @@ interface ClienteOption {
 interface ProdutoOption {
   id: string
   nome: string
+  codigo?: string
   valor_venda: number
 }
 
 interface ItemForm {
   produto_id: string
+  codigo_peca: string
   quantidade: number
   valor_unitario: number
 }
@@ -77,7 +79,7 @@ const STATUS_VARIANT: Record<
   cancelada: 'destructive',
 }
 
-const emptyItem = (): ItemForm => ({ produto_id: '', quantidade: 1, valor_unitario: 0 })
+const emptyItem = (): ItemForm => ({ produto_id: '', codigo_peca: '', quantidade: 1, valor_unitario: 0 })
 
 const printNonFiscalCoupon = (params: {
   clienteNome: string
@@ -163,6 +165,8 @@ export default function VendasPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [novoClienteNome, setNovoClienteNome] = useState('')
+  const [novoClienteTelefone, setNovoClienteTelefone] = useState('')
 
   const [formData, setFormData] = useState<{
     cliente_id: string
@@ -215,6 +219,8 @@ export default function VendasPage() {
       observacoes: '',
       itens: [emptyItem()],
     })
+    setNovoClienteNome('')
+    setNovoClienteTelefone('')
   }
 
   const addItem = () => {
@@ -235,13 +241,30 @@ export default function VendasPage() {
     }))
   }
 
+  const normalizeCode = (value: string) => value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '')
+
   const handleProdutoChange = (index: number, produtoId: string) => {
     const produto = produtos.find((p) => p.id === produtoId)
     updateItem(index, {
       produto_id: produtoId,
-      // Pré-preenche o valor unitário com o valor de venda do produto.
+      codigo_peca: produto?.codigo || '',
       valor_unitario: produto ? Number(produto.valor_venda) : 0,
     })
+  }
+
+  const handleCodigoPecaChange = (index: number, codigo: string) => {
+    const normalizedCodigo = normalizeCode(codigo)
+    const produto = produtos.find((p) => normalizeCode(p.codigo || '') === normalizedCodigo)
+
+    updateItem(index, {
+      codigo_peca: normalizedCodigo,
+      produto_id: produto?.id || '',
+      valor_unitario: produto ? Number(produto.valor_venda) : 0,
+    })
+
+    if (produto) {
+      toast.success(`Peça localizada: ${produto.nome}`)
+    }
   }
 
   const total = formData.itens.reduce(
@@ -250,11 +273,6 @@ export default function VendasPage() {
   )
 
   const handleSave = async () => {
-    if (!formData.cliente_id) {
-      toast.error('Selecione um cliente')
-      return
-    }
-
     const itensValidos = formData.itens.filter(
       (item) => item.produto_id && item.quantidade > 0
     )
@@ -272,8 +290,44 @@ export default function VendasPage() {
         return
       }
 
+      let clienteId = formData.cliente_id
+      const nomeClienteNovo = novoClienteNome.trim()
+
+      if (!clienteId && nomeClienteNovo) {
+        const clienteJaExiste = clientes.find(
+          (cliente) => cliente.nome.toLowerCase() === nomeClienteNovo.toLowerCase()
+        )
+
+        if (clienteJaExiste) {
+          clienteId = clienteJaExiste.id
+        } else {
+          const clientePayload = {
+            nome: nomeClienteNovo,
+            telefone: novoClienteTelefone.trim() || 'Não informado',
+            whatsapp: novoClienteTelefone.trim() || 'Não informado',
+            cpf: undefined,
+            endereco: undefined,
+            data_nascimento: undefined,
+            observacoes: undefined,
+          }
+
+          const { data: clienteCriado, error: clienteError } = await clientesService.create(
+            clientePayload,
+            usuarioId
+          )
+
+          if (clienteError) throw clienteError
+          clienteId = clienteCriado?.id
+        }
+      }
+
+      if (!clienteId) {
+        toast.error('Selecione um cliente existente ou cadastre um novo cliente')
+        return
+      }
+
       const vendaData = {
-        cliente_id: formData.cliente_id,
+        cliente_id: clienteId,
         forma_pagamento: formData.forma_pagamento,
         observacoes: formData.observacoes || undefined,
         itens: itensValidos.map((item) => ({
@@ -283,8 +337,8 @@ export default function VendasPage() {
         })),
       }
 
-      const vendaCriada = await vendasService.create(vendaData, usuarioId)
-      const clienteNome = clientes.find((cliente) => cliente.id === formData.cliente_id)?.nome || 'Cliente'
+      await vendasService.create(vendaData, usuarioId)
+      const clienteNome = clientes.find((cliente) => cliente.id === clienteId)?.nome || novoClienteNome.trim() || 'Cliente'
 
       toast.success('Venda registrada com sucesso!')
 
@@ -341,7 +395,7 @@ export default function VendasPage() {
 
               <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
                 <div className="space-y-2">
-                  <Label htmlFor="cliente">Cliente *</Label>
+                  <Label htmlFor="cliente">Cliente existente</Label>
                   <select
                     id="cliente"
                     value={formData.cliente_id}
@@ -350,13 +404,33 @@ export default function VendasPage() {
                     }
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   >
-                    <option value="">Selecione um cliente</option>
+                    <option value="">Selecione um cliente cadastrado</option>
                     {clientes.map((cliente) => (
                       <option key={cliente.id} value={cliente.id}>
                         {cliente.nome}
                       </option>
                     ))}
                   </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="novoClienteNome">Cadastrar cliente agora</Label>
+                  <Input
+                    id="novoClienteNome"
+                    value={novoClienteNome}
+                    onChange={(e) => setNovoClienteNome(e.target.value)}
+                    placeholder="Digite o nome do cliente para salvar automaticamente"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="novoClienteTelefone">Telefone do cliente</Label>
+                  <Input
+                    id="novoClienteTelefone"
+                    value={novoClienteTelefone}
+                    onChange={(e) => setNovoClienteTelefone(e.target.value)}
+                    placeholder="Opicional - se não preencher, será salvo como 'Não informado'"
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -429,6 +503,22 @@ export default function VendasPage() {
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             )}
+                          </div>
+
+                          <div className="space-y-1">
+                            <Label className="text-xs">Código da peça</Label>
+                            <Input
+                              value={item.codigo_peca}
+                              onChange={(e) => handleCodigoPecaChange(index, e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.currentTarget.blur()
+                                }
+                              }}
+                              placeholder="Escaneie com leitor de código de barras"
+                              autoComplete="off"
+                              inputMode="text"
+                            />
                           </div>
 
                           <div className="grid grid-cols-2 gap-2">

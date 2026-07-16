@@ -22,6 +22,77 @@ import { formatCurrency } from '@/lib/utils'
 import { produtosService, getUsuarioId } from '@/lib/services'
 import type { Produto } from '@/types'
 
+const normalizeCode = (value: string) => value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '')
+
+const generatePieceCode = (nome: string, categoria: string) => {
+  const nomePart = normalizeCode(nome).slice(0, 3) || 'PEC'
+  const categoriaPart = normalizeCode(categoria).slice(0, 3) || 'GEN'
+  const suffix = Math.random().toString(36).slice(2, 6).toUpperCase()
+  return `${nomePart}-${categoriaPart}-${suffix}`
+}
+
+const printEtiqueta = (produto: { nome: string; categoria: string; codigo?: string }) => {
+  const printWindow = window.open('', '_blank', 'width=420,height=640')
+
+  if (!printWindow) {
+    toast.error('Não foi possível abrir a janela de impressão da etiqueta.')
+    return
+  }
+
+  const codigo = produto.codigo || 'SEM-CODIGO'
+  const tamanho = produto.categoria || 'Tamanho não informado'
+
+  printWindow.document.write(`<!DOCTYPE html>
+    <html>
+      <head>
+        <title>Etiqueta - ${produto.nome}</title>
+        <style>
+          @page { size: 90mm 55mm; margin: 0; }
+          body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #fff;
+            color: #111;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+          }
+          .label {
+            width: 88mm;
+            height: 52mm;
+            border: 2px solid #111;
+            box-sizing: border-box;
+            padding: 10px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 4px;
+          }
+          .brand { font-size: 16px; font-weight: 700; text-transform: uppercase; }
+          .title { font-size: 17px; font-weight: 700; }
+          .meta { font-size: 12px; }
+          .code { font-size: 20px; font-weight: 700; letter-spacing: 1px; }
+          .footer { font-size: 10px; }
+        </style>
+      </head>
+      <body>
+        <div class="label">
+          <div class="brand">Brunely Kids</div>
+          <div class="title">${produto.nome}</div>
+          <div class="meta">Tamanho / categoria: ${tamanho}</div>
+          <div class="code">${codigo}</div>
+          <div class="footer">Roupa infantil • código da peça</div>
+        </div>
+      </body>
+    </html>`)
+
+  printWindow.document.close()
+  printWindow.focus()
+  printWindow.print()
+}
+
 export default function EstoquePage() {
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [loading, setLoading] = useState(true)
@@ -64,6 +135,17 @@ export default function EstoquePage() {
     }
   }
 
+  const handleGenerateCode = () => {
+    if (!formData.nome || !formData.categoria) {
+      toast.error('Preencha nome e tamanho/categoria antes de gerar o código.')
+      return
+    }
+
+    const generatedCode = generatePieceCode(formData.nome, formData.categoria)
+    setFormData((prev) => ({ ...prev, codigo: generatedCode }))
+    toast.success('Código da peça gerado com sucesso!')
+  }
+
   const handleSave = async () => {
     try {
       const usuarioId = await getUsuarioId()
@@ -73,18 +155,21 @@ export default function EstoquePage() {
       }
 
       if (!formData.nome || !formData.categoria) {
-        toast.error('Preencha nome e categoria')
+        toast.error('Preencha nome e tamanho/categoria')
         return
       }
 
-      // Campos opcionais vazios viram undefined (não '').
+      const codigoFinal = formData.codigo?.trim()
+        ? normalizeCode(formData.codigo)
+        : generatePieceCode(formData.nome, formData.categoria)
+
       const payload = {
         nome: formData.nome,
         categoria: formData.categoria,
-        codigo: formData.codigo || undefined,
+        codigo: codigoFinal,
         quantidade: Number(formData.quantidade),
         quantidade_minima: Number(formData.quantidade_minima),
-        valor_compra: Number(formData.valor_compra),
+        valor_custo: Number(formData.valor_compra),
         valor_venda: Number(formData.valor_venda),
         fornecedor: formData.fornecedor || undefined,
       }
@@ -96,7 +181,7 @@ export default function EstoquePage() {
       setIsDialogOpen(false)
       setFormData(emptyForm)
       fetchProdutos()
-    } catch (error) {
+    } catch {
       toast.error('Erro ao salvar produto')
     }
   }
@@ -104,7 +189,7 @@ export default function EstoquePage() {
   const filteredProdutos = produtos.filter(produto =>
     produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     produto.categoria.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    produto.codigo?.toLowerCase().includes(searchTerm.toLowerCase())
+    produto.codigo_interno?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   const lowStockCount = produtos.filter(
@@ -157,23 +242,46 @@ export default function EstoquePage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="categoria">Categoria *</Label>
+                  <Label htmlFor="categoria">Tamanho / categoria *</Label>
                   <Input
                     id="categoria"
                     value={formData.categoria}
                     onChange={(e) => setFormData({ ...formData, categoria: e.target.value })}
-                    placeholder="Ex: Bebidas, Limpeza..."
+                    placeholder="Ex: P, M, G, 4 anos, 6 anos"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="codigo">Código</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="codigo">Código da peça</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={handleGenerateCode}>
+                      Gerar código
+                    </Button>
+                  </div>
                   <Input
                     id="codigo"
                     value={formData.codigo}
                     onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
                     placeholder="Código / SKU"
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full"
+                    onClick={() => {
+                      const codigoEtiqueta = formData.codigo?.trim() || generatePieceCode(formData.nome || 'PEC', formData.categoria || 'GEN')
+                      printEtiqueta({
+                        nome: formData.nome || 'Produto sem nome',
+                        categoria: formData.categoria || 'Tamanho não informado',
+                        codigo: codigoEtiqueta,
+                      })
+                    }}
+                  >
+                    Gerar etiqueta (padrão infantil)
+                  </Button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -318,7 +426,7 @@ export default function EstoquePage() {
                             <span className={isLowStock ? 'text-destructive font-medium' : ''}>
                               Estoque: {produto.quantidade} / mín. {produto.quantidade_minima}
                             </span>
-                            {produto.codigo && <span>Cód.: {produto.codigo}</span>}
+                            {produto.codigo_interno && <span>Cód.: {produto.codigo_interno}</span>}
                           </div>
                         </div>
                       </div>

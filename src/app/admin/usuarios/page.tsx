@@ -8,12 +8,12 @@ import { Input } from '@/components/ui/input'
 import { adminService } from '@/lib/services/admin'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/lib/utils'
-import type { User } from '@/types'
+import type { UserProfile } from '@/types'
 import { toast } from 'sonner'
 import { Check, X, Power, ShieldCheck, ShieldOff, Search, Clock } from 'lucide-react'
 
 export default function AdminUsuariosPage() {
-  const [usuarios, setUsuarios] = useState<User[]>([])
+  const [usuarios, setUsuarios] = useState<UserProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
   const [termo, setTermo] = useState('')
@@ -25,7 +25,7 @@ export default function AdminUsuariosPage() {
     if (error) {
       toast.error('Erro ao carregar usuários')
     } else {
-      setUsuarios((data as User[]) || [])
+      setUsuarios((data as UserProfile[]) || [])
     }
     setLoading(false)
   }
@@ -65,13 +65,13 @@ export default function AdminUsuariosPage() {
     }
   }
 
-  const filtrados = usuarios.filter((u) => {
+  const filtrados = usuarios.filter((u: UserProfile) => {
     if (!termo.trim()) return true
     const t = termo.toLowerCase()
     return u.nome?.toLowerCase().includes(t) || u.email?.toLowerCase().includes(t)
   })
 
-  const statusBadge = (u: User) => {
+  const statusBadge = (u: UserProfile) => {
     if (u.ativo === false) {
       return <Badge variant="secondary">Inativo</Badge>
     }

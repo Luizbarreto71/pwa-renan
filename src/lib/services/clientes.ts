@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
-import type { Cliente, ClienteFormData } from '@/types'
+import type { ClienteFormData } from '@/types'
 
 const supabase = createClient()
 

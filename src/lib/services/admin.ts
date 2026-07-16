@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
-import type { User } from '@/types'
+import type { UserProfile } from '@/types'
 
 const supabase = createClient()
 
@@ -16,7 +16,7 @@ export interface AdminResumo {
 }
 
 export interface AtividadeUsuario {
-  usuario: User
+  usuario: UserProfile
   clientes: number
   vendas: number
   faturamento: number
@@ -100,7 +100,7 @@ export const adminService = {
       supabase.from('emprestimos').select('usuario_id'),
     ])
 
-    const usuarios = (usuariosRes.data || []) as User[]
+    const usuarios = (usuariosRes.data || []) as UserProfile[]
     const clientes = clientesRes.data || []
     const vendas = vendasRes.data || []
     const emprestimos = emprestimosRes.data || []

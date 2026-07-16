@@ -31,6 +31,7 @@ interface Cliente {
   id: string
   nome: string
   telefone: string
+  whatsapp?: string
   cpf?: string
   endereco?: string
   data_nascimento?: string
@@ -47,6 +48,7 @@ export default function ClientesPage() {
   const [formData, setFormData] = useState({
     nome: '',
     telefone: '',
+    whatsapp: '',
     cpf: '',
     endereco: '',
     data_nascimento: '',
@@ -83,6 +85,7 @@ export default function ClientesPage() {
       const payload = {
         nome: formData.nome,
         telefone: formData.telefone,
+        whatsapp: formData.whatsapp || formData.telefone,
         cpf: formData.cpf || undefined,
         endereco: formData.endereco || undefined,
         data_nascimento: formData.data_nascimento || undefined,
@@ -101,14 +104,15 @@ export default function ClientesPage() {
 
       setIsDialogOpen(false)
       setEditingCliente(null)
-      setFormData({
-        nome: '',
-        telefone: '',
-        cpf: '',
-        endereco: '',
-        data_nascimento: '',
-        observacoes: '',
-      })
+        setFormData({
+          nome: '',
+          telefone: '',
+          whatsapp: '',
+          cpf: '',
+          endereco: '',
+          data_nascimento: '',
+          observacoes: '',
+        })
       fetchClientes()
     } catch (error) {
       toast.error('Erro ao salvar cliente')
@@ -118,13 +122,14 @@ export default function ClientesPage() {
   const handleEdit = (cliente: Cliente) => {
     setEditingCliente(cliente)
     setFormData({
-      nome: cliente.nome,
-      telefone: cliente.telefone,
-      cpf: cliente.cpf || '',
-      endereco: cliente.endereco || '',
-      data_nascimento: cliente.data_nascimento || '',
-      observacoes: cliente.observacoes || '',
-    })
+        nome: cliente.nome,
+        telefone: cliente.telefone,
+        whatsapp: cliente.whatsapp || '',
+        cpf: cliente.cpf || '',
+        endereco: cliente.endereco || '',
+        data_nascimento: cliente.data_nascimento || '',
+        observacoes: cliente.observacoes || '',
+      })
     setIsDialogOpen(true)
   }
 
@@ -168,14 +173,15 @@ export default function ClientesPage() {
               render={<Button />}
               onClick={() => {
                 setEditingCliente(null)
-                setFormData({
-                  nome: '',
-                  telefone: '',
-                  cpf: '',
-                  endereco: '',
-                  data_nascimento: '',
-                  observacoes: '',
-                })
+      setFormData({
+        nome: '',
+        telefone: '',
+        whatsapp: '',
+        cpf: '',
+        endereco: '',
+        data_nascimento: '',
+        observacoes: '',
+      })
               }}
             >
               <Plus className="w-4 h-4 mr-2" />

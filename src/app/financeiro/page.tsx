@@ -332,7 +332,7 @@ export default function FinanceiroPage() {
                           <p className="font-medium truncate">{lancamento.descricao}</p>
                           <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
                             <span>{lancamento.categoria}</span>
-                            <span>{formatDate(lancamento.data)}</span>
+                            <span>{formatDate(lancamento.data_vencimento)}</span>
                           </div>
                         </div>
                       </div>
