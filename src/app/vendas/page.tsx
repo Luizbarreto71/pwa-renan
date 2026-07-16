@@ -94,6 +94,23 @@ const printNonFiscalCoupon = (params: {
   const data = now.toLocaleDateString('pt-BR')
   const hora = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
   const numeroCupom = `CUPOM-${now.getTime().toString(36).toUpperCase()}`
+
+  // Carregar dados da loja salvos nas configurações
+  let dadosLoja = {
+    nome_loja: 'Brunely Kids',
+    slogan: 'Roupas Infantis com Amor e Estilo',
+    cnpj: '00.000.000/0001-00',
+    endereco: 'Rua Exemplo, 123 - Centro',
+    telefone: '(83) 9XXXX-XXXX',
+    email: 'contato@brunelykids.com.br',
+    garantia_dias: '30',
+  }
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('dados-loja')
+    if (saved) {
+      dadosLoja = JSON.parse(saved)
+    }
+  }
   
   const linhas = params.itens
     .map((item) => {
@@ -129,7 +146,7 @@ const printNonFiscalCoupon = (params: {
   printWindow.document.write(`<!DOCTYPE html>
     <html>
       <head>
-        <title>Cupom - Brunely Kids</title>
+        <title>Cupom - ${dadosLoja.nome_loja}</title>
         <style>
           @page { size: 80mm 297mm; margin: 0; }
           * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -170,9 +187,9 @@ const printNonFiscalCoupon = (params: {
       </head>
       <body>
         <div class="header">
-          <h1>BRUNELY KIDS</h1>
-          <p class="slogan">Roupas Infantis com Amor e Estilo</p>
-          <p style="font-size:10px;margin-top:2px;">CNPJ: 00.000.000/0001-00</p>
+          <h1>${dadosLoja.nome_loja.toUpperCase()}</h1>
+          <p class="slogan">${dadosLoja.slogan}</p>
+          <p style="font-size:10px;margin-top:2px;">CNPJ: ${dadosLoja.cnpj}</p>
         </div>
 
         <div class="info">
@@ -221,10 +238,10 @@ const printNonFiscalCoupon = (params: {
         <div class="divider"></div>
 
         <div class="footer">
-          <p>📍 Rua Exemplo, 123 - Centro</p>
-          <p>📱 (83) 9XXXX-XXXX</p>
-          <p>📧 contato@brunelykids.com.br</p>
-          <p style="margin-top:3mm;">🔹 Garantia da peça: 30 dias 🔹</p>
+          <p>📍 ${dadosLoja.endereco}</p>
+          <p>📱 ${dadosLoja.telefone}</p>
+          <p>📧 ${dadosLoja.email}</p>
+          <p style="margin-top:3mm;">🔹 Garantia da peça: ${dadosLoja.garantia_dias} dias 🔹</p>
           <p>Conserve este cupom</p>
           <p style="margin-top:2mm;">💖 Obrigado pela preferência!</p>
         </div>
