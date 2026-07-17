@@ -175,14 +175,19 @@ export default function EstoquePage() {
       }
 
       const { error } = await produtosService.create(payload, usuarioId)
-      if (error) throw error
+      if (error) {
+        console.error('Erro ao salvar produto:', error)
+        throw error
+      }
 
       toast.success('Produto cadastrado com sucesso!')
       setIsDialogOpen(false)
       setFormData(emptyForm)
       fetchProdutos()
-    } catch {
-      toast.error('Erro ao salvar produto')
+    } catch (error: any) {
+      console.error('Erro completo:', error)
+      const mensagem = error?.message || 'Erro ao salvar produto'
+      toast.error(mensagem)
     }
   }
 
