@@ -60,6 +60,8 @@ export default function PDVPage() {
   const carregarDados = async () => {
     try {
       const usuarioId = await getUsuarioId()
+      console.log('Carregando dados para usuarioId:', usuarioId)
+      
       if (!usuarioId) {
         toast.error('Usuário não autenticado')
         return
@@ -69,6 +71,9 @@ export default function PDVPage() {
         produtosService.getAll(usuarioId),
         clientesService.getAll(usuarioId),
       ])
+
+      console.log('Resposta produtos:', produtosRes)
+      console.log('Resposta clientes:', clientesRes)
 
       if (produtosRes.error) {
         console.error('Erro ao carregar produtos:', produtosRes.error)
@@ -100,49 +105,52 @@ export default function PDVPage() {
     try {
       tocarBeep()
       
-      // Validações
-      if (!produto || !produto.id) {
-        toast.error('Produto inválido')
-        return
-      }
-
-      if (produto.quantidade <= 0) {
-        toast.error('Produto sem estoque disponível')
+      console.log('Tentando adicionar produto:', produto.nome, produto)
+      
+      // Validações básicas
+      if (!produto) {
+        toast.error('Produto não encontrado')
         return
       }
 
       const valorVenda = Number(produto.valor_venda)
-      if (isNaN(valorVenda) || valorVenda <= 0) {
-        toast.error('Produto sem preço de venda cadastrado')
-        return
-      }
+      const quantidadeEstoque = Number(produto.quantidade)
+      
+      console.log('Validações:', { 
+        id: produto.id, 
+        valorVenda, 
+        quantidadeEstoque,
+        carrinhoLength: carrinho.length 
+      })
 
       const existente = carrinho.find(item => item.produto.id === produto.id)
 
       if (existente) {
-        if (existente.quantidade >= produto.quantidade) {
-          toast.error('Estoque máximo atingido')
+        const novaQtd = existente.quantidade + 1
+        if (novaQtd > quantidadeEstoque) {
+          toast.error(`Estoque máximo: ${quantidadeEstoque} unidades`)
           return
         }
         setCarrinho(carrinho.map(item =>
           item.produto.id === produto.id
-            ? { ...item, quantidade: item.quantidade + 1 }
+            ? { ...item, quantidade: novaQtd }
             : item
         ))
+        toast.success(`Quantidade aumentada para ${novaQtd}`)
       } else {
         setCarrinho([...carrinho, {
           produto,
           quantidade: 1,
-          valor_unitario: valorVenda,
+          valor_unitario: isNaN(valorVenda) ? 0 : valorVenda,
           desconto: 0,
         }])
+        toast.success(`${produto.nome} adicionado`)
       }
       
       setBusca('')
       buscaRef.current?.focus()
       
-      // Feedback visual
-      toast.success(`${produto.nome} adicionado ao carrinho`)
+      console.log('Carrinho atual:', carrinho)
     } catch (error) {
       console.error('Erro ao adicionar produto:', error)
       toast.error('Erro ao adicionar produto')
