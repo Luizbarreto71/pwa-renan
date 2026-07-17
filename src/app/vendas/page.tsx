@@ -36,6 +36,9 @@ export default function PDVPage() {
 
   useEffect(() => {
     carregarDados()
+    
+    // Log para debug
+    console.log('PDV iniciado')
   }, [])
 
   useEffect(() => {
@@ -57,16 +60,31 @@ export default function PDVPage() {
   const carregarDados = async () => {
     try {
       const usuarioId = await getUsuarioId()
-      if (!usuarioId) return
+      if (!usuarioId) {
+        toast.error('Usuário não autenticado')
+        return
+      }
 
       const [produtosRes, clientesRes] = await Promise.all([
         produtosService.getAll(usuarioId),
         clientesService.getAll(usuarioId),
       ])
 
-      if (produtosRes.data) setProdutos(produtosRes.data)
-      if (clientesRes.data) setClientes(clientesRes.data)
-    } catch {
+      if (produtosRes.error) {
+        console.error('Erro ao carregar produtos:', produtosRes.error)
+        toast.error('Erro ao carregar produtos')
+      } else if (produtosRes.data) {
+        setProdutos(produtosRes.data)
+        console.log('Produtos carregados:', produtosRes.data.length)
+      }
+
+      if (clientesRes.error) {
+        console.error('Erro ao carregar clientes:', clientesRes.error)
+      } else if (clientesRes.data) {
+        setClientes(clientesRes.data)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error)
       toast.error('Erro ao carregar dados')
     }
   }
@@ -79,25 +97,56 @@ export default function PDVPage() {
   }
 
   const adicionarProduto = (produto: Produto) => {
-    tocarBeep()
-    const existente = carrinho.find(item => item.produto.id === produto.id)
+    try {
+      tocarBeep()
+      
+      // Validações
+      if (!produto || !produto.id) {
+        toast.error('Produto inválido')
+        return
+      }
 
-    if (existente) {
-      setCarrinho(carrinho.map(item =>
-        item.produto.id === produto.id
-          ? { ...item, quantidade: item.quantidade + 1 }
-          : item
-      ))
-    } else {
-      setCarrinho([...carrinho, {
-        produto,
-        quantidade: 1,
-        valor_unitario: Number(produto.valor_venda),
-        desconto: 0,
-      }])
+      if (produto.quantidade <= 0) {
+        toast.error('Produto sem estoque disponível')
+        return
+      }
+
+      const valorVenda = Number(produto.valor_venda)
+      if (isNaN(valorVenda) || valorVenda <= 0) {
+        toast.error('Produto sem preço de venda cadastrado')
+        return
+      }
+
+      const existente = carrinho.find(item => item.produto.id === produto.id)
+
+      if (existente) {
+        if (existente.quantidade >= produto.quantidade) {
+          toast.error('Estoque máximo atingido')
+          return
+        }
+        setCarrinho(carrinho.map(item =>
+          item.produto.id === produto.id
+            ? { ...item, quantidade: item.quantidade + 1 }
+            : item
+        ))
+      } else {
+        setCarrinho([...carrinho, {
+          produto,
+          quantidade: 1,
+          valor_unitario: valorVenda,
+          desconto: 0,
+        }])
+      }
+      
+      setBusca('')
+      buscaRef.current?.focus()
+      
+      // Feedback visual
+      toast.success(`${produto.nome} adicionado ao carrinho`)
+    } catch (error) {
+      console.error('Erro ao adicionar produto:', error)
+      toast.error('Erro ao adicionar produto')
     }
-    setBusca('')
-    buscaRef.current?.focus()
   }
 
   const removerProduto = (produtoId: string) => {
