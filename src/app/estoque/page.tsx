@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { Plus, Search, Package, AlertTriangle, Edit } from 'lucide-react'
+import { Plus, Search, Package, AlertTriangle, Edit, Trash2 } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import { produtosService, getUsuarioId } from '@/lib/services'
 import type { Produto } from '@/types'
@@ -160,6 +160,30 @@ export default function EstoquePage() {
       fornecedor: produto.fornecedor || '',
     })
     setIsDialogOpen(true)
+  }
+
+  const handleDelete = async (produto: Produto) => {
+    if (!confirm(`Tem certeza que deseja excluir o produto "${produto.nome}"?`)) {
+      return
+    }
+
+    try {
+      const usuarioId = await getUsuarioId()
+      if (!usuarioId) return
+
+      const { error } = await produtosService.delete(produto.id)
+      if (error) {
+        console.error('Erro ao excluir produto:', error)
+        throw error
+      }
+
+      toast.success('Produto excluído com sucesso!')
+      fetchProdutos()
+    } catch (error: any) {
+      console.error('Erro completo:', error)
+      const mensagem = error?.message || 'Erro ao excluir produto'
+      toast.error(mensagem)
+    }
   }
 
   const handleSave = async () => {
@@ -473,6 +497,14 @@ export default function EstoquePage() {
                           className="h-8 w-8"
                         >
                           <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(produto)}
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                         <div className="text-right">
                           <p className="font-semibold">{formatCurrency(produto.valor_venda)}</p>
