@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { Plus, Search, Package, AlertTriangle } from 'lucide-react'
+import { Plus, Search, Package, AlertTriangle, Edit } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import { produtosService, getUsuarioId } from '@/lib/services'
 import type { Produto } from '@/types'
@@ -98,6 +98,7 @@ export default function EstoquePage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [editingProduto, setEditingProduto] = useState<Produto | null>(null)
 
   const emptyForm = {
     nome: '',
@@ -146,6 +147,21 @@ export default function EstoquePage() {
     toast.success('Código da peça gerado com sucesso!')
   }
 
+  const handleEdit = (produto: Produto) => {
+    setEditingProduto(produto)
+    setFormData({
+      nome: produto.nome,
+      categoria: produto.categoria,
+      codigo: produto.codigo_interno || '',
+      quantidade: Number(produto.quantidade),
+      quantidade_minima: Number(produto.quantidade_minima),
+      valor_compra: Number(produto.valor_custo),
+      valor_venda: Number(produto.valor_venda),
+      fornecedor: produto.fornecedor || '',
+    })
+    setIsDialogOpen(true)
+  }
+
   const handleSave = async () => {
     try {
       const usuarioId = await getUsuarioId()
@@ -174,14 +190,26 @@ export default function EstoquePage() {
         fornecedor: formData.fornecedor || undefined,
       }
 
-      const { error } = await produtosService.create(payload, usuarioId)
-      if (error) {
-        console.error('Erro ao salvar produto:', error)
-        throw error
+      if (editingProduto) {
+        // Atualizar produto existente
+        const { error } = await produtosService.update(editingProduto.id, payload)
+        if (error) {
+          console.error('Erro ao atualizar produto:', error)
+          throw error
+        }
+        toast.success('Produto atualizado com sucesso!')
+      } else {
+        // Criar novo produto
+        const { error } = await produtosService.create(payload, usuarioId)
+        if (error) {
+          console.error('Erro ao salvar produto:', error)
+          throw error
+        }
+        toast.success('Produto cadastrado com sucesso!')
       }
 
-      toast.success('Produto cadastrado com sucesso!')
       setIsDialogOpen(false)
+      setEditingProduto(null)
       setFormData(emptyForm)
       fetchProdutos()
     } catch (error: any) {
@@ -216,22 +244,23 @@ export default function EstoquePage() {
             />
           </div>
 
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger
-              render={<Button />}
-              onClick={() => {
-                setFormData(emptyForm)
-              }}
-            >
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            setIsDialogOpen(open)
+            if (!open) {
+              setEditingProduto(null)
+              setFormData(emptyForm)
+            }
+          }}>
+            <DialogTrigger render={<Button />}>
               <Plus className="w-4 h-4 mr-2" />
               Novo Produto
             </DialogTrigger>
 
             <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>Novo Produto</DialogTitle>
+                <DialogTitle>{editingProduto ? 'Editar Produto' : 'Novo Produto'}</DialogTitle>
                 <DialogDescription>
-                  Preencha as informações do produto.
+                  {editingProduto ? 'Atualize as informações do produto.' : 'Preencha as informações do produto.'}
                 </DialogDescription>
               </DialogHeader>
 
@@ -436,11 +465,21 @@ export default function EstoquePage() {
                         </div>
                       </div>
 
-                      <div className="text-right">
-                        <p className="font-semibold">{formatCurrency(produto.valor_venda)}</p>
-                        {isLowStock && (
-                          <Badge variant="destructive" className="mt-1">Estoque baixo</Badge>
-                        )}
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(produto)}
+                          className="h-8 w-8"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <div className="text-right">
+                          <p className="font-semibold">{formatCurrency(produto.valor_venda)}</p>
+                          {isLowStock && (
+                            <Badge variant="destructive" className="mt-1">Estoque baixo</Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </CardContent>
