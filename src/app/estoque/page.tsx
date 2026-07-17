@@ -169,7 +169,7 @@ export default function EstoquePage() {
         codigo: codigoFinal,
         quantidade: Number(formData.quantidade),
         quantidade_minima: Number(formData.quantidade_minima),
-        valor_custo: Number(formData.valor_compra),
+        valor_compra: Number(formData.valor_compra),
         valor_venda: Number(formData.valor_venda),
         fornecedor: formData.fornecedor || undefined,
       }

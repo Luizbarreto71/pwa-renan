@@ -57,7 +57,7 @@ export interface ProdutoFormData {
   codigo_interno?: string
   codigo_barras?: string
   sku?: string
-  valor_custo: number
+  valor_custo?: number
   valor_venda: number
   fornecedor?: string
   quantidade: number
